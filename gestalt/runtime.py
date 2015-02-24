@@ -5,8 +5,10 @@ import traceback
 
 from gestalt.injector import DependencyInjector
 
+
 __author__ = 'jpercent'
 
+logger = logging.getLogger(__name__)
 
 class RuntimeAssistant(object):
     def __init__(self):
@@ -35,12 +37,16 @@ class RuntimeAssistant(object):
             p = psutil.Process(os.getpid())
             p.set_nice(psutil.HIGH_PRIORITY_CLASS)
         except Exception as e:
-            RuntimeAssistant.print_last_exception()
+            RuntimeAssistant.log_exception(logger.warn, "RuntimeAssistant.make_high_priority failed")
 
     @staticmethod
     def print_last_exception():
         exc_type, exc_value, exc_traceback = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stderr)
+
+    @staticmethod
+    def log_last_exception(logger_method, message):
+        logger_method(message+'; stack trace = {stack_trace}'.format(traceback.format_exc(limit=35)))
 
 
 class JsonConfiguredRuntime(object):
@@ -63,11 +69,11 @@ class JsonConfiguredRuntime(object):
             self.logger = logging.getLogger(__name__)
         except Exception as e:
             if not self.logger:
-                print(str(self.__class__.__name__)+': FATAL failed to initialize correctly; did not complete logging setup')
+                error_msg = '{class}: FATAL failed to initialize correctly; did not complete logging setup'.format(self.__class__.__name__)
+                RuntimeAssistant.print_exception(error_msg)
             else:
-                self.logger.fatal('failed to initialize correctly')
+                RuntimeAssistant.log_exception(self.error, 'failed to initialize correctly')
 
-            RuntimeAssistant.print_last_exception()
             raise e
 
 
