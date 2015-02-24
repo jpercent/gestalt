@@ -1,0 +1,4 @@
+#!bin/bash
+python3 test/configuration_test.py -c file.json
+python3 test/configuration_test.py --conf file.json
+python3 test/configuration_test.py
