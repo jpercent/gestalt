@@ -1,87 +1,95 @@
 import logging
+import gestalt
 import json
+import multiprocessing
+import optparse
 import sys
 import traceback
-
-from gestalt.injector import DependencyInjector
 
 
 __author__ = 'jpercent'
 
+__all__ = [Application, create]
+
 logger = logging.getLogger(__name__)
 
-class RuntimeAssistant(object):
+
+def parse_json_conf(conf):
+    parsed_conf = None
+    with open(conf, 'rt') as file_descriptor:
+        json_string = file_descriptor.read()
+        parsed_conf = json.loads(json_string)
+    return parsed_conf
+
+
+def create_application(conf_path):
+    conf_obj = gestalt.Configuration(conf_path)
+    conf = conf_obj.parse()
+    factory = gestalt.Factory()
+    assembler = gestalt.Assembler(conf, factory)
+    return assembler.construct_application()
+
+
+def create_background_context(conf_path):
+    application = create_application(conf_path)
+    assert application.main
+    application.run()
+
+
+def create_context(name, conf_path, background):
+    if background:
+        service = multiprocessing.Process(name=name, target=create_background_context, args=[conf_path])
+        service.daemon = False
+        service.start()
+    else:
+        create_background_context(conf_path)
+
+
+def create(name, conf_path, async=True, background=False):
+    if async:
+        service = multiprocessing.Process(name=name, target=create_context, args=[name, conf_path, background])
+        service.daemon = False
+        service.start()
+        return service
+    else:
+        return create_application(name, conf_path)
+
+
+def parse_options():
+
+    usage = "usage: %prog --name=<APP-NAME> --conf=<CONF-PATH> [options]"
+    name_help = 'application name'
+    conf_help = 'path to the configuration file'
+    async_help = 'run in an asynchronous context; default value = false'
+    background_help = 'background the asynchronous context; invalid without --async option; default value = false'
+    try:
+        parser = optparse.OptionParser(version="%prog 1.0", usage=usage)
+        parser.add_option('-n', '--name', type=str, dest='name', default=None, metavar='APP-NAME', help=name_help)
+        parser.add_option('-c', '--conf', type=str, dest='conf', default=None, metavar='CONF-PATH', help=conf_help)
+        parser.add_option('-a', '--async', action='store_true', metavar='ASYNC', help=async_help)
+        parser.add_option('-b', '--background', action='store_false', metavar='BACKGROUND', help=background_help)
+        (options, args) = parser.parse_args()
+        assert options.name and options.conf
+        return options, args
+    except Exception as e:
+        logger.error('parse_options: FATAL failed to parse program arguments')
+        logger.error(traceback.format(limit=35))
+        #exc_type, exc_value, exc_traceback = sys.exc_info()
+        #traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stderr)
+        raise e
+
+
+class Application(object):
     def __init__(self):
-        super(RuntimeAssistant, self).__init__()
+        super(Application, self).__init__()
 
-    @staticmethod
-    def configure(config, factory_instance):
-        assert factory_instance
-        dpi = DependencyInjector(factory_instance)
-        instance = dpi.configure_application(config)
-        assert instance
-        return instance
+    def run(self):
+        """subclass hook"""
 
-    @staticmethod
-    def parse_json_config(conf):
-        with open(conf, 'rt') as file_descriptor:
-            json_string = file_descriptor.read()
-            config = json.loads(json_string)
-        return config
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        multiprocessing.freeze_support()
 
-    @staticmethod
-    def make_high_priority():
-        try:
-            import psutil
-            import os
-            p = psutil.Process(os.getpid())
-            p.set_nice(psutil.HIGH_PRIORITY_CLASS)
-        except Exception as e:
-            RuntimeAssistant.log_exception(logger.warn, "RuntimeAssistant.make_high_priority failed")
-
-    @staticmethod
-    def print_last_exception():
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stderr)
-
-    @staticmethod
-    def log_last_exception(logger_method, message):
-        logger_method(message+'; stack trace = {stack_trace}'.format(traceback.format_exc(limit=35)))
-
-
-class JsonConfiguredRuntime(object):
-    def __init__(self, factory, conf_dir):
-        """Initializes a JsonConfiguredRuntime."""
-        self.factory = factory
-        self.conf_dir = conf_dir
-        self.full_conf_path = None
-        self.logger = None
-        self.log_level = logging.INFO
-        self.config = None
-        self.controller = None
-        self.args = None
-        self.options = None
-
-    def init(self):
-        try:
-            self.config = RuntimeAssistant.parse_json_config(self.full_conf_path)
-            self.controller = RuntimeAssistant.configure(self.config, self.factory)
-            self.logger = logging.getLogger(__name__)
-        except Exception as e:
-            if not self.logger:
-                error_msg = '{class}: FATAL failed to initialize correctly; did not complete logging setup'.format(self.__class__.__name__)
-                RuntimeAssistant.print_exception(error_msg)
-            else:
-                RuntimeAssistant.log_exception(self.error, 'failed to initialize correctly')
-
-            raise e
-
-
-class Controller(object):
-    def __init__(self):
-        super(Controller, self).__init__()
-
-    def start(self, **kwargs):
-        # Subclass hook
-        pass
-
+    options, args = parse_options()
+    app = create(options.name, options.conf, options.async, options.background)
+    app.run()
