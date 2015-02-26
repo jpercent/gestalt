@@ -17,6 +17,7 @@ import logging
 
 __author__ = 'jpercent'
 
+__all__ = [construct_application]
 
 logger = logging.getLogger(__name__)
 
