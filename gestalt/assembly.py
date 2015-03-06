@@ -17,7 +17,7 @@ import logging
 
 __author__ = 'jpercent'
 
-__all__ = [construct_application]
+__all__ = ['construct_application']
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ def spawn(qualified_type_name, args):
 def create_instance(instance_name, conf, services, spawn_fn=spawn):
     objdesc = conf[instance_name]
     args = None
+    deps = None
     assert objdesc['type']
     obj_type = objdesc['type']
 
@@ -62,7 +63,6 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
         args = objdesc['args']
 
     if 'deps' in objdesc:
-        deps = None
         for key, value in objdesc['deps'].items():
             if type(value) == list:
                 depobj = []
@@ -70,12 +70,12 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
                     if element in services:
                         depobj.append(services[element])
                     else:
-                        depobj.append(create_instance(element, conf))
+                        depobj.append(create_instance(element, services, spawn_fn))
             else:
-                if key in services:
-                    depobj = services['key']
+                if value in services:
+                    depobj = services[value]
                 else:
-                    depobj = create_instance(value, conf)
+                    depobj = create_instance(value, services, spawn_fn)
 
             if not deps:
                 deps = {}
@@ -88,6 +88,7 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
         assert not args and len(deps.keys()) > 0
         args = deps
 
+    logging.debug("creating object of type = ", obj_type)
     newobj = spawn_fn(obj_type, args)
     newobj.__name__ = instance_name
     assert newobj
@@ -95,11 +96,6 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
 
 
 def construct_services(conf, create_fn):
-    """
-    :param conf: configuration parameters
-    :param create_fn: factory method
-    :return: returns dictionary of instantiated objects
-    """
     services = {}
     level = 0
     max_level = 0
@@ -107,16 +103,18 @@ def construct_services(conf, create_fn):
     while level <= max_level:
         pop_keys = set([])
         for key, value in conf.items():
-            if not ('service' in value):
+            if not ('service' in value) or not value['service']:
                 continue
 
-            level_value = value['service']
+            level_value = 0
+            if 'service-level' in value:
+                level_value = value['service-level']
+
             if level_value > max_level:
                 max_level = level_value
 
             if level_value <= level:
-                service = create_fn(key, conf)
-                services[service.__name__] = service
+                services[key] = create_fn(key, conf, services)
                 pop_keys.add(key)
 
         for key in pop_keys:
@@ -129,8 +127,9 @@ def construct_services(conf, create_fn):
 
 def construct_application(conf, create_fn=create_instance):
     application = {'main': None}
-    services = construct_services(conf, create_fn)
 
+    services = construct_services(conf, create_fn)
+    logging.debug("conf keys = ", conf.keys())
     for key, value in conf.items():
         if 'main' in conf[key]:
             application['main'] = create_fn(key, conf, services)
