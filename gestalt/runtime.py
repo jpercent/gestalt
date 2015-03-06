@@ -6,12 +6,14 @@ import optparse
 import sys
 import traceback
 
+from gestalt.assembly import construct_application
 
 __author__ = 'jpercent'
 
-__all__ = [Application, create]
+__all__ = ['Application', 'ConfigurationError', 'create', 'parse_options']
 
 logger = logging.getLogger(__name__)
+
 
 
 def parse_json_conf(conf):
@@ -23,17 +25,14 @@ def parse_json_conf(conf):
 
 
 def create_application(conf_path):
-    conf_obj = gestalt.Configuration(conf_path)
-    conf = conf_obj.parse()
-    factory = gestalt.Factory()
-    assembler = gestalt.Assembler(conf, factory)
-    return assembler.construct_application()
+    conf = parse_json_conf(conf_path)
+    return construct_application(conf)
 
 
 def create_background_context(conf_path):
     application = create_application(conf_path)
-    assert application.main
-    application.run()
+    assert 'main' in application
+    application['main'].run()
 
 
 def create_context(name, conf_path, background):
@@ -45,14 +44,18 @@ def create_context(name, conf_path, background):
         create_background_context(conf_path)
 
 
-def create(name, conf_path, async=True, background=False):
+def create(conf_path=None, name=None, async=False, background=False):
     if async:
         service = multiprocessing.Process(name=name, target=create_context, args=[name, conf_path, background])
         service.daemon = False
         service.start()
-        return service
+        return AsyncApplication(service, False if background else True)
     else:
-        return create_application(name, conf_path)
+        return create_application(conf_path)
+
+
+class ConfigurationError(Exception):
+    pass
 
 
 def parse_options():
@@ -65,31 +68,50 @@ def parse_options():
     try:
         parser = optparse.OptionParser(version="%prog 1.0", usage=usage)
         parser.add_option('-n', '--name', type=str, dest='name', default=None, metavar='APP-NAME', help=name_help)
-        parser.add_option('-c', '--conf', type=str, dest='conf', default=None, metavar='CONF-PATH', help=conf_help)
+        parser.add_option('-c', '--conf', type=str, dest='conf_path', default=None, metavar='CONF-PATH', help=conf_help)
         parser.add_option('-a', '--async', action='store_true', metavar='ASYNC', help=async_help)
         parser.add_option('-b', '--background', action='store_false', metavar='BACKGROUND', help=background_help)
         (options, args) = parser.parse_args()
-        assert options.name and options.conf
+        assert options.name and options.conf_path
         return options, args
     except Exception as e:
         logger.error('parse_options: FATAL failed to parse program arguments')
-        logger.error(traceback.format(limit=35))
+        logger.error(traceback.format_exc(limit=35))
         #exc_type, exc_value, exc_traceback = sys.exc_info()
         #traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stderr)
-        raise e
+        raise ConfigurationError(e)
 
 
 class Application(object):
     def __init__(self):
         super(Application, self).__init__()
 
+    def is_async(self):
+        return False
+
     def run(self):
         """subclass hook"""
+
+
+class AsyncApplication(Application):
+    def __init__(self, subprocess=None, wait=True):
+        super(AsyncApplication, self).__init__()
+        self.subprocess = subprocess
+        self.wait = wait
+
+    def is_async(self):
+        return True
+
+    def run(self):
+        if self.wait:
+            self.subprocess.join()
+        return
+
 
 if __name__ == '__main__':
     if sys.platform == 'win32':
         multiprocessing.freeze_support()
 
     options, args = parse_options()
-    app = create(options.name, options.conf, options.async, options.background)
+    app = create(**vars(options))
     app.run()
