@@ -72,7 +72,7 @@ def parse_options():
         parser.add_option('-a', '--async', action='store_true', metavar='ASYNC', help=async_help)
         parser.add_option('-b', '--background', action='store_false', metavar='BACKGROUND', help=background_help)
         (options, args) = parser.parse_args()
-        assert options.name and options.conf_path
+        #assert options.name and options.conf_path
         return options, args
     except Exception as e:
         logger.error('parse_options: FATAL failed to parse program arguments')

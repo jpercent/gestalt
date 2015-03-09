@@ -88,7 +88,7 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
         assert not args and len(deps.keys()) > 0
         args = deps
 
-    logging.debug("creating object of type = ", obj_type)
+    logger.debug("creating object of type = ", obj_type)
     newobj = spawn_fn(obj_type, args)
     newobj.__name__ = instance_name
     assert newobj
@@ -129,7 +129,7 @@ def construct_application(conf, create_fn=create_instance):
     application = {'main': None}
 
     services = construct_services(conf, create_fn)
-    logging.debug("conf keys = ", conf.keys())
+    logger.debug("conf keys = ", conf.keys())
     for key, value in conf.items():
         if 'main' in conf[key]:
             application['main'] = create_fn(key, conf, services)
