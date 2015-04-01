@@ -2,3 +2,7 @@
 python3 test/configuration_test.py -c file.json
 python3 test/configuration_test.py --conf file.json
 python3 test/configuration_test.py
+
+python3 test/assembly.py
+python3 test/runtime.py
+
