@@ -13,7 +13,7 @@ class ConfigurationTest(unittest.TestCase):
     def setUp(self):
         try:
             os.mkdir('tmp')
-        except:
+        except FileExistsError as e:
             pass
 
         os.chdir('tmp')
@@ -39,21 +39,21 @@ class ConfigurationTest(unittest.TestCase):
     def test_dash_dash_conf(self):
         print("ConfigurationTest.test_dash_dash_conf")
         json_test = self.create_json_file('file.json')
-        conf = gykaa.configuration.Configuration()
+        conf = gestalt.Configuration()
         parsed_conf = conf.parse()
         self.assertDictEqual(json_test, parsed_conf, "")
 
     def test_dash_c(self):
         print("ConfigurationTest.test_dash_c")
         json_test = self.create_json_file('file.json')
-        conf = gykaa.configuration.Configuration()
+        conf = gestalt.Configuration()
         parsed_conf = conf.parse()
         self.assertDictEqual(json_test, parsed_conf, "")
 
 
     def test_default_conf(self):
         print("ConfigurationTest.test_default")
-        conf = gykaa.configuration.Configuration()
+        conf = gestalt.Configuration()
         parsed_conf = conf.parse()
         self.assertEquals(parsed_conf['test'], True)
 
@@ -64,6 +64,7 @@ class ConfigurationTest(unittest.TestCase):
             self.test_dash_c()
         else:
             self.test_default_conf()
+
 
 if __name__ == '__main__':
     suite = unittest.TestSuite()
