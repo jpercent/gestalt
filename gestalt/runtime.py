@@ -15,7 +15,6 @@ __all__ = ['Application', 'ConfigurationError', 'create', 'parse_options']
 logger = logging.getLogger(__name__)
 
 
-
 def parse_json_conf(conf):
     parsed_conf = None
     with open(conf, 'rt') as file_descriptor:
