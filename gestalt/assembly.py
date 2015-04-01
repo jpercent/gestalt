@@ -14,6 +14,7 @@
 
 import importlib
 import logging
+import json
 
 __author__ = 'jpercent'
 
@@ -53,6 +54,9 @@ def spawn(qualified_type_name, args):
 
 
 def create_instance(instance_name, conf, services, spawn_fn=spawn):
+#    print("instance = ", instance_name)
+#    print("services = ", services)
+#    print("conf =", conf.keys())
     objdesc = conf[instance_name]
     args = None
     deps = None
@@ -70,12 +74,12 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
                     if element in services:
                         depobj.append(services[element])
                     else:
-                        depobj.append(create_instance(element, services, spawn_fn))
+                        depobj.append(create_instance(element, conf, services, spawn_fn))
             else:
                 if value in services:
                     depobj = services[value]
                 else:
-                    depobj = create_instance(value, services, spawn_fn)
+                    depobj = create_instance(value, conf, services, spawn_fn)
 
             if not deps:
                 deps = {}
@@ -88,9 +92,11 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
         assert not args and len(deps.keys()) > 0
         args = deps
 
-    logger.debug("creating object of type = ", obj_type)
+#    logger.debug("creating object of type = ", obj_type)
     newobj = spawn_fn(obj_type, args)
-    newobj.__name__ = instance_name
+    if hasattr(newobj, '__dict__'):
+        newobj.gestalt_name = instance_name
+
     assert newobj
     return newobj
 
@@ -103,6 +109,7 @@ def construct_services(conf, create_fn):
     while level <= max_level:
         pop_keys = set([])
         for key, value in conf.items():
+ #           print ("VALUE = ", value)
             if not ('service' in value) or not value['service']:
                 continue
 
@@ -125,11 +132,40 @@ def construct_services(conf, create_fn):
     return services
 
 
+def load_includes(conf):
+    ret = {}
+    if 'includes' in conf:
+        includes = conf['includes']
+        files = includes.keys()
+        for file in files:
+            with open(file, 'rt') as fd:
+                json_string = fd.read()
+                new_include = json.loads(json_string)
+
+            if not new_include:
+                continue
+
+            for type in includes[file]:
+                assert type in new_include
+                new_type = new_include[type]
+                assert not(type in ret)
+                ret[type] = new_type
+
+        conf.pop('includes')
+    return ret
+
+
 def construct_application(conf, create_fn=create_instance):
     application = {'main': None}
 
+    includes = load_includes(conf)
+
+    assert len(set(conf.keys()).intersection(includes.keys())) == 0
+
+    conf.update(includes)
     services = construct_services(conf, create_fn)
-    logger.debug("conf keys = ", conf.keys())
+#    logger.debug("conf keys = ", conf.keys())
+
     for key, value in conf.items():
         if 'main' in conf[key]:
             application['main'] = create_fn(key, conf, services)
