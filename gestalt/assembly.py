@@ -60,7 +60,10 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
     objdesc = conf[instance_name]
     args = None
     deps = None
-    assert objdesc['type']
+
+    if not('type' in objdesc):
+        return objdesc
+
     obj_type = objdesc['type']
 
     if 'args' in objdesc:
@@ -150,6 +153,7 @@ def load_includes(conf):
                 new_type = new_include[type]
                 assert not(type in ret)
                 ret[type] = new_type
+
 
         conf.pop('includes')
     return ret
