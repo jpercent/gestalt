@@ -98,7 +98,8 @@ def create_instance(instance_name, conf, services, spawn_fn=spawn):
 #    logger.debug("creating object of type = ", obj_type)
     newobj = spawn_fn(obj_type, args)
     if hasattr(newobj, '__dict__'):
-        newobj.gestalt_name = instance_name
+        #print("Instance name = ", instance_name)
+        newobj.__dict__['gestalt_name'] = instance_name
 
     assert newobj
     return newobj
@@ -175,6 +176,7 @@ def construct_application(conf, create_fn=create_instance):
             application['main'] = create_fn(key, conf, services)
 
     application['services'] = services
+    #print("APPLICATION = ", application)
     assert application['main']
     return application
 
