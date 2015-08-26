@@ -59,25 +59,26 @@ class ConfigurationError(Exception):
 
 def parse_options():
 
-    usage = "usage: %prog --name=<APP-NAME> --conf=<CONF-PATH> [options]"
+    usage = "usage: %prog --conf=<CONF-PATH> [options]"
     name_help = 'application name'
     conf_help = 'path to the configuration file'
     async_help = 'run in an asynchronous context; default value = false'
     background_help = 'background the asynchronous context; invalid without --async option; default value = false'
     try:
         parser = optparse.OptionParser(version="%prog 1.0", usage=usage)
-        parser.add_option('-n', '--name', type=str, dest='name', default=None, metavar='APP-NAME', help=name_help)
-        parser.add_option('-c', '--conf', type=str, dest='conf_path', default=None, metavar='CONF-PATH', help=conf_help)
-        parser.add_option('-a', '--async', action='store_true', metavar='ASYNC', help=async_help)
-        parser.add_option('-b', '--background', action='store_false', metavar='BACKGROUND', help=background_help)
+        parser.add_option('-n', '--name', type=str, dest='name', default=None,
+                          metavar='APP-NAME', help=name_help)
+        parser.add_option('-c', '--conf', type=str, dest='conf_path', default=None,
+                          metavar='CONF-PATH', help=conf_help)
+        parser.add_option('-a', '--async', action='store_true', metavar='ASYNC',
+                          help=async_help)
+        parser.add_option('-b', '--background', action='store_false', metavar='BACKGROUND',
+                          help=background_help)
         (options, args) = parser.parse_args()
-        #assert options.name and options.conf_path
         return options, args
     except Exception as e:
         logger.error('parse_options: FATAL failed to parse program arguments')
         logger.error(traceback.format_exc(limit=35))
-        #exc_type, exc_value, exc_traceback = sys.exc_info()
-        #traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stderr)
         raise ConfigurationError(e)
 
 
