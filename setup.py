@@ -1,4 +1,15 @@
 
-from distutils.core import setup
+from setuptools import setup
 
-setup(name='gestalt', version='0.0.1', author='James Percent', author_email='jpercent@shift5.net')
+packages = ['jestalt']
+
+package_data = {
+    '.' : ['README.md', '.gitignore', 'setup.cfg', 'LICENSE.txt']
+}
+
+setup(name='jestalt',
+      version='0.1.0',
+      packages=packages,
+      package_data=package_data,
+      author='James Percent',
+      author_email='jpercent@shift5.net')
