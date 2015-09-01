@@ -53,56 +53,71 @@ def spawn(qualified_type_name, args):
     return newobj
 
 
+class GestaltCreateInstanceException(Exception):
+    pass
+
+
 def create_instance(instance_name, conf, services, spawn_fn=spawn):
 #    print("instance = ", instance_name)
 #    print("services = ", services)
 #    print("conf =", conf.keys())
-    objdesc = conf[instance_name]
-    args = None
-    deps = None
+    try:
+        objdesc = conf[instance_name]
+        args = None
+        deps = None
 
-    if not('type' in objdesc):
-        return objdesc
+        if not('type' in objdesc):
+            return objdesc
 
-    obj_type = objdesc['type']
+        obj_type = objdesc['type']
 
-    if 'args' in objdesc:
-        args = objdesc['args']
+        if 'args' in objdesc:
+            args = objdesc['args']
+            for arg in args:
+                if args[arg] == 'reference':
+                    args[arg] = conf['global_values'][arg]
 
-    if 'deps' in objdesc:
-        for key, value in objdesc['deps'].items():
-            if type(value) == list:
-                depobj = []
-                for element in value:
-                    if element in services:
-                        depobj.append(services[element])
-                    else:
-                        depobj.append(create_instance(element, conf, services, spawn_fn))
-            else:
-                if value in services:
-                    depobj = services[value]
+        if 'deps' in objdesc:
+            for key, value in objdesc['deps'].items():
+                if type(value) == list:
+                    depobj = []
+                    for element in value:
+                        if element in services:
+                            depobj.append(services[element])
+                        else:
+                            depobj.append(create_instance(element, conf, services, spawn_fn))
                 else:
-                    depobj = create_instance(value, conf, services, spawn_fn)
+                    if value in services:
+                        depobj = services[value]
+                    else:
+                        depobj = create_instance(value, conf, services, spawn_fn)
 
-            if not deps:
-                deps = {}
+                if not deps:
+                    deps = {}
 
-            deps[key] = depobj
+                deps[key] = depobj
 
-    if args and deps:
-        args.update(deps)
-    elif deps:
-        assert not args and len(deps.keys()) > 0
-        args = deps
+        if args and deps:
+            args.update(deps)
+        elif deps:
+            assert not args and len(deps.keys()) > 0
+            args = deps
 
-#    logger.debug("creating object of type = ", obj_type)
-    newobj = spawn_fn(obj_type, args)
-    if hasattr(newobj, '__dict__'):
-        #print("Instance name = ", instance_name)
-        newobj.__dict__['gestalt_name'] = instance_name
+    #    logger.debug("creating object of type = ", obj_type)
+        newobj = spawn_fn(obj_type, args)
+        if hasattr(newobj, '__dict__'):
+            #print("Instance name = ", instance_name)
+            newobj.__dict__['gestalt_name'] = instance_name
 
-    assert newobj
-    return newobj
+        assert newobj
+        return newobj
+
+    except Exception as e:
+        error_msg = \
+            "Failed to create instance = {0} conf = {1}; services injected = {2}; spawn_fn = {3}"\
+                .format(instance_name, conf, services, spawn_fn)
+        logger.error(error_msg)
+        raise GestaltCreateInstanceException(error_msg)
 
 
 def construct_services(conf, create_fn):
@@ -136,47 +151,16 @@ def construct_services(conf, create_fn):
     return services
 
 
-def load_includes(conf):
-    ret = {}
-    if 'includes' in conf:
-        includes = conf['includes']
-        files = includes.keys()
-        for file in files:
-            with open(file, 'rt') as fd:
-                json_string = fd.read()
-                new_include = json.loads(json_string)
-
-            if not new_include:
-                continue
-
-            for type in includes[file]:
-                assert type in new_include
-                new_type = new_include[type]
-                assert not(type in ret)
-                ret[type] = new_type
-
-
-        conf.pop('includes')
-    return ret
-
-
 def construct_application(conf, create_fn=create_instance):
     application = {'main': None}
 
-    includes = load_includes(conf)
-
-    assert len(set(conf.keys()).intersection(includes.keys())) == 0
-
-    conf.update(includes)
     services = construct_services(conf, create_fn)
-#    logger.debug("conf keys = ", conf.keys())
 
     for key, value in conf.items():
         if 'main' in conf[key]:
             application['main'] = create_fn(key, conf, services)
 
     application['services'] = services
-    #print("APPLICATION = ", application)
     assert application['main']
     return application
 
