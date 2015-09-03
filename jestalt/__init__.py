@@ -1,5 +1,5 @@
-from gestalt.assembly import *
-from gestalt.runtime import *
+from jestalt.assembly import *
+from jestalt.runtime import *
 
 __author__ = 'jpercent'
 

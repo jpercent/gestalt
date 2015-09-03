@@ -1,12 +1,12 @@
 import logging
-import gestalt
+import jestalt
 import json
 import multiprocessing
 import optparse
 import sys
 import traceback
 
-from gestalt.assembly import construct_application
+from jestalt.assembly import construct_application
 
 __author__ = 'jpercent'
 
