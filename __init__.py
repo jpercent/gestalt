@@ -1,4 +1,4 @@
 
 __author__ = 'jpercent'
 
-from gestalt import *
+from jestalt import *
