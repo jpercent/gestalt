@@ -1,0 +1,47 @@
+{
+  "hello world": {
+    "type": "hello.Hello",
+    "main": true,
+    "deps": {
+      "message_manager": "messages",
+      "io_service": "master_io_service"
+    }
+  },
+
+  "messages": {
+    "type": "hello.Messages",
+    "args": {
+      "messages": [
+        "Hello", "Happy", "Radiant", "World"
+      ]
+    }
+  },
+
+  "file_output": {
+    "type": "hello.FileOutput",
+    "args": {
+      "name": "file output",
+      "filename": "example.log"
+    }
+
+  },
+
+  "standard_output": {
+    "type": "hello.StandardOutput",
+    "args": {
+      "name": "standard output"
+    }
+  },
+
+  "master_io_service": {
+    "type": "hello.MasterOutputService",
+    "service": 0,
+    "args": {
+      "name": "Master IO Service"
+    },
+
+    "deps": {
+      "slaves": ["standard_output", "file_output"]
+    }
+  }
+}
