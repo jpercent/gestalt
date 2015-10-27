@@ -1,4 +1,4 @@
-# Jestalt: Managing Python Dependencies with JSON
+# Managing Python Dependencies with JSON
 
 Jestalt is a framework for managing Python dependencies. Jestalt provides
 a JSON-based interface for expressing how programs and services are created, 
