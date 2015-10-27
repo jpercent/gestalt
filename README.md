@@ -24,7 +24,7 @@ LOSX-JPERCENT:examples $ pip install jestalt
 ```
 
 Now that Jestalt is installed we can work through the example. The example code can be 
-found [here](https://github.com/jpercent/jestalt/example/)
+found [here](https://github.com/jpercent/gestalt/tree/master/example)
 
 ### An example
 
